@@ -1,0 +1,5 @@
+{
+  "name": "WebHichord Synth",
+  "description": "A web-based synthesizer inspired by the Hichord, featuring one-key chords and XY axis modulation.",
+  "requestFramePermissions": []
+}
