@@ -16,7 +16,6 @@ export const Oscilloscope: React.FC = () => {
     
     const draw = () => {
       if (!analyser) {
-         // If audio isn't started yet, just verify audio engine exists or wait
          animationId = requestAnimationFrame(draw);
          return;
       }
@@ -25,12 +24,21 @@ export const Oscilloscope: React.FC = () => {
       const dataArray = new Uint8Array(bufferLength);
       analyser.getByteTimeDomainData(dataArray);
 
-      // Clear with transparency for trail effect? No, clean wipe looks faster.
-      ctx.fillStyle = 'rgba(15, 23, 42, 1)'; // Match bg-slate-900
+      // Screen Background - Deep black for OLED look
+      ctx.fillStyle = '#000000'; 
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Grid lines (subtle)
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.stroke();
+
+      // Waveform - Sharp Cyan or Electric Blue
       ctx.lineWidth = 2;
-      ctx.strokeStyle = '#22d3ee'; // Cyan-400
+      ctx.strokeStyle = '#22d3ee'; 
       ctx.beginPath();
 
       const sliceWidth = (canvas.width * 1.0) / bufferLength;
@@ -61,11 +69,19 @@ export const Oscilloscope: React.FC = () => {
   }, []);
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      width={600} 
-      height={150} 
-      className="w-full h-32 bg-slate-900 rounded-lg border border-slate-700 shadow-inner"
-    />
+    <div className="relative">
+      {/* Screen Bezel */}
+      <div className="absolute inset-0 border-2 border-zinc-700 rounded pointer-events-none z-10 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]"></div>
+      <canvas 
+        ref={canvasRef} 
+        width={600} 
+        height={100} 
+        className="w-full h-24 bg-black rounded block"
+      />
+      <div className="flex justify-between px-1 mt-1">
+        <span className="text-[9px] text-zinc-500 uppercase tracking-widest">Master Out</span>
+        <span className="text-[9px] text-zinc-500 uppercase tracking-widest">L/R</span>
+      </div>
+    </div>
   );
 };

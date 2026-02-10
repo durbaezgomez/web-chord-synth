@@ -6,18 +6,15 @@ import { CHORD_MAP, CONTROL_KEYS } from './constants';
 import { audioEngine } from './services/audioEngine';
 import { XYPosition } from './types';
 
-// Physics Config
-const MOVE_SPEED = 0.08;
-const SPRING_STRENGTH = 0.2; // How fast it snaps back to 0 (0-1)
-
 const App: React.FC = () => {
   const [started, setStarted] = useState(false);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [xy, setXY] = useState<XYPosition>({ x: 0, y: 0 });
+  const [subEnabled, setSubEnabled] = useState(false);
   
   const keysPressed = useRef<Set<string>>(new Set());
   const xyRef = useRef<XYPosition>({ x: 0, y: 0 });
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number>(0);
 
   // Input Handling
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -25,7 +22,6 @@ const App: React.FC = () => {
     const key = e.key.toLowerCase();
     keysPressed.current.add(key);
 
-    // Audio Trigger if it's a chord key
     if (CHORD_MAP[key]) {
       const chord = CHORD_MAP[key];
       audioEngine.triggerAttack(key, chord.baseFrequency, chord.quality);
@@ -37,7 +33,6 @@ const App: React.FC = () => {
     const key = e.key.toLowerCase();
     keysPressed.current.delete(key);
 
-    // Audio Release
     if (CHORD_MAP[key]) {
       audioEngine.triggerRelease(key);
       setActiveKeys(prev => prev.filter(k => k !== key));
@@ -70,39 +65,36 @@ const App: React.FC = () => {
     setStarted(true);
   };
 
+  const toggleSub = () => {
+    const newState = !subEnabled;
+    setSubEnabled(newState);
+    audioEngine.setSubEnabled(newState);
+  };
+
   // Joystick Physics Loop
   useEffect(() => {
     const loop = () => {
-      let dx = 0;
-      let dy = 0;
+      // Target based physics for immediate responsiveness
+      let targetX = 0;
+      let targetY = 0;
 
-      const isUp = keysPressed.current.has(CONTROL_KEYS.UP);
-      const isDown = keysPressed.current.has(CONTROL_KEYS.DOWN);
-      const isLeft = keysPressed.current.has(CONTROL_KEYS.LEFT);
-      const isRight = keysPressed.current.has(CONTROL_KEYS.RIGHT);
-      const isHolding = isUp || isDown || isLeft || isRight;
+      if (keysPressed.current.has(CONTROL_KEYS.LEFT)) targetX -= 1;
+      if (keysPressed.current.has(CONTROL_KEYS.RIGHT)) targetX += 1;
+      if (keysPressed.current.has(CONTROL_KEYS.UP)) targetY += 1;
+      if (keysPressed.current.has(CONTROL_KEYS.DOWN)) targetY -= 1;
 
-      // Input Force
-      if (isLeft) dx -= MOVE_SPEED;
-      if (isRight) dx += MOVE_SPEED;
-      if (isUp) dy += MOVE_SPEED;
-      if (isDown) dy -= MOVE_SPEED;
+      // Smooth interpolation (Lerp)
+      const smoothing = 0.15; // 0.1 to 0.2 provides a good 'physical' feel
+      
+      const dx = targetX - xyRef.current.x;
+      const dy = targetY - xyRef.current.y;
 
-      let newX = xyRef.current.x + dx;
-      let newY = xyRef.current.y + dy;
+      let newX = xyRef.current.x + dx * smoothing;
+      let newY = xyRef.current.y + dy * smoothing;
 
-      // Spring back to center if not holding any direction
-      if (!isHolding) {
-        newX = newX * (1 - SPRING_STRENGTH);
-        newY = newY * (1 - SPRING_STRENGTH);
-        // Snap to 0 if close
-        if (Math.abs(newX) < 0.01) newX = 0;
-        if (Math.abs(newY) < 0.01) newY = 0;
-      }
-
-      // Clamp
-      newX = Math.max(-1, Math.min(1, newX));
-      newY = Math.max(-1, Math.min(1, newY));
+      // Snap to target if very close to save resources/jitter
+      if (Math.abs(targetX - newX) < 0.001) newX = targetX;
+      if (Math.abs(targetY - newY) < 0.001) newY = targetY;
 
       if (newX !== xyRef.current.x || newY !== xyRef.current.y) {
         xyRef.current = { x: newX, y: newY };
@@ -132,67 +124,101 @@ const App: React.FC = () => {
   }, [handleKeyDown, handleKeyUp]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900 text-slate-200 select-none font-sans">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#121212] select-none font-mono">
       
-      {/* Header */}
-      <header className="mb-8 text-center">
-        <h1 className="text-5xl font-black tracking-tighter text-white mb-2 italic">
-          WEB<span className="text-cyan-400">HI</span>CHORD
-        </h1>
-        <p className="text-sm text-slate-500 tracking-widest uppercase">
-          Diatonic Vector Synthesizer
-        </p>
-      </header>
+      {/* The Device Chassis */}
+      <div className="relative bg-zinc-800 p-8 rounded-lg shadow-2xl border-t border-zinc-700 w-full max-w-4xl">
+        
+        {/* Screw details (Visual fluff) */}
+        <div className="absolute top-4 left-4 w-3 h-3 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center"><div className="w-1.5 h-px bg-zinc-700 rotate-45"></div></div>
+        <div className="absolute top-4 right-4 w-3 h-3 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center"><div className="w-1.5 h-px bg-zinc-700 rotate-45"></div></div>
+        <div className="absolute bottom-4 left-4 w-3 h-3 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center"><div className="w-1.5 h-px bg-zinc-700 rotate-45"></div></div>
+        <div className="absolute bottom-4 right-4 w-3 h-3 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center"><div className="w-1.5 h-px bg-zinc-700 rotate-45"></div></div>
 
-      {!started ? (
-        <button 
-          onClick={startAudio}
-          className="group relative px-10 py-5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-full shadow-[0_0_40px_rgba(8,145,178,0.4)] transition-all overflow-hidden"
-        >
-          <span className="relative z-10">INITIALIZE SYSTEM</span>
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-        </button>
-      ) : (
-        <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-12 items-center justify-center">
-          
-          {/* XY Controller */}
-          <div className="flex-shrink-0">
-             <XYController position={xy} />
+        {/* Branding Area */}
+        <header className="mb-8 flex justify-between items-end border-b-2 border-zinc-900 pb-4">
+          <div>
+            <h1 className="text-xl font-bold tracking-widest text-zinc-100 flex items-center gap-2">
+              <span className="w-4 h-4 bg-orange-500 inline-block rounded-sm"></span>
+              <span className="text-zinc-500 font-normal">WEB</span>CHORD
+            </h1>
+            <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">
+              Vector Synthesis Module • REV 1.0
+            </p>
           </div>
+          <div className="text-[10px] text-zinc-500 text-right">
+             <div className="flex items-center gap-1 justify-end">
+               <div className={`w-2 h-2 rounded-full ${started ? 'bg-green-500' : 'bg-red-900'}`}></div>
+               POWER
+             </div>
+          </div>
+        </header>
 
-          {/* Right Section: Chords & Visuals */}
-          <div className="flex flex-col gap-6 w-full max-w-2xl">
+        {!started ? (
+          <div className="h-64 flex flex-col items-center justify-center bg-zinc-900/50 rounded border border-zinc-700 border-dashed">
+            <button 
+              onClick={startAudio}
+              className="group relative px-8 py-3 bg-zinc-200 text-zinc-900 font-bold text-sm tracking-widest hover:bg-white transition-all border-b-4 border-zinc-400 active:border-b-0 active:translate-y-1"
+            >
+              INITIALIZE ENGINE
+            </button>
+            <p className="mt-4 text-[10px] text-zinc-500">CLICK TO START AUDIO CONTEXT</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-8">
             
-            {/* Display */}
-            <div className="bg-slate-800 p-1 rounded-2xl border border-slate-700 shadow-xl overflow-hidden">
-               <div className="bg-black/40 p-4 rounded-xl">
-                 <Oscilloscope />
-               </div>
+            {/* Left Panel: Modulation */}
+            <div className="bg-zinc-900/30 p-4 rounded border border-zinc-700/50 flex flex-col items-center justify-center">
+               <XYController position={xy} />
             </div>
 
-            {/* Chord Bar */}
-            <Keyboard 
-               activeKeys={activeKeys}
-               onNoteStart={handleChordStart}
-               onNoteEnd={handleChordEnd}
-            />
-            
-            {/* Instructions */}
-             <div className="grid grid-cols-2 gap-4 text-[11px] text-slate-500 uppercase tracking-wider">
-               <div className="bg-slate-800/50 p-3 rounded border border-slate-700/50">
-                 <strong className="text-cyan-400 block mb-1">1. Select Chord</strong>
-                 Hold keys <span className="text-white">J K L ; U I O</span> to play scale degrees.
-               </div>
-               <div className="bg-slate-800/50 p-3 rounded border border-slate-700/50">
-                 <strong className="text-cyan-400 block mb-1">2. Modulate</strong>
-                 Use <span className="text-white">W A S D</span> to morph chord quality in real-time.
-               </div>
-             </div>
+            {/* Right Panel: Performance */}
+            <div className="flex flex-col gap-6">
+              
+              {/* Screen Area */}
+              <div className="bg-zinc-900 p-4 rounded border-2 border-zinc-950 shadow-inner">
+                 <div className="flex justify-between items-center mb-2">
+                    <span className="text-[9px] text-teal-500 font-bold uppercase">Signal Monitor</span>
+                    <span className="text-[9px] text-zinc-600 font-mono">120 BPM</span>
+                 </div>
+                 <Oscilloscope />
+                 <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center justify-between">
+                    <div className="text-[9px] text-zinc-500 uppercase">Voice Config</div>
+                    <button 
+                      onClick={toggleSub}
+                      className={`
+                        flex items-center gap-2 px-3 py-1 rounded border transition-all text-[10px] font-bold tracking-widest
+                        ${subEnabled 
+                          ? 'bg-orange-500/20 border-orange-500 text-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.3)]' 
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-600 hover:border-zinc-600 hover:text-zinc-400'
+                        }
+                      `}
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full ${subEnabled ? 'bg-orange-500' : 'bg-zinc-700'}`}></div>
+                      SUB OSC
+                    </button>
+                 </div>
+              </div>
 
+              {/* Controls */}
+              <div className="mt-auto">
+                 <Keyboard 
+                    activeKeys={activeKeys}
+                    onNoteStart={handleChordStart}
+                    onNoteEnd={handleChordEnd}
+                 />
+              </div>
+
+            </div>
           </div>
-
+        )}
+        
+        {/* Footer Decals */}
+        <div className="mt-8 pt-4 border-t border-zinc-700 flex justify-between text-[9px] text-zinc-600 uppercase">
+           <div>Stereo Output</div>
+           <div>Diatonic Chord System</div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

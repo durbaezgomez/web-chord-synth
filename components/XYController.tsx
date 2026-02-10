@@ -10,60 +10,70 @@ export const XYController: React.FC<XYControllerProps> = ({ position }) => {
   const leftPercent = ((position.x + 1) / 2) * 100;
   const topPercent = (1 - (position.y + 1) / 2) * 100;
 
-  // Grid Labels
+  // Grid Labels - using short codes for cleaner look
   const gridCells = [
     { label: 'AUG', class: 'border-r border-b' },
-    { label: 'MAJ/MIN', class: 'border-r border-b' },
-    { label: 'DOM 7', class: 'border-b' },
+    { label: 'M/m', class: 'border-r border-b' },
+    { label: '7', class: 'border-b' },
     { label: 'DIM', class: 'border-r border-b' },
-    { label: 'BASE', class: 'border-r border-b bg-slate-700/30' },
-    { label: 'MAJ7/m7', class: 'border-b' },
-    { label: '6/SUS2', class: 'border-r' },
+    { label: '●', class: 'border-r border-b bg-zinc-800/50' },
+    { label: 'M7', class: 'border-b' },
+    { label: '6', class: 'border-r' },
     { label: 'SUS4', class: 'border-r' },
-    { label: 'ADD 9', class: '' },
+    { label: '9', class: '' },
   ];
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      <div className="relative w-72 h-72 bg-slate-800 rounded-xl border-4 border-slate-700 shadow-2xl overflow-hidden select-none">
+    <div className="flex flex-col items-center">
+      <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 w-full flex justify-between">
+        <span>Modulator</span>
+        <span>X/Y</span>
+      </div>
+      
+      <div className="relative w-64 h-64 bg-zinc-900 rounded border border-zinc-700 shadow-inner overflow-hidden select-none">
         
-        {/* 3x3 Grid Background */}
-        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
+        {/* 3x3 Grid Background - Technical Lines */}
+        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 text-zinc-600">
           {gridCells.map((cell, i) => (
-            <div key={i} className={`flex items-center justify-center border-slate-600/50 ${cell.class}`}>
-              <span className="text-[10px] font-bold text-slate-500 tracking-wider text-center px-1">
+            <div key={i} className={`flex items-center justify-center border-zinc-800 ${cell.class}`}>
+              <span className="text-[9px] font-bold text-zinc-600 font-mono">
                 {cell.label}
               </span>
             </div>
           ))}
         </div>
 
-        {/* The Puck */}
-        <div 
-          className="absolute w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.6)] transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 ease-out z-10"
-          style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
-        >
-           <div className="absolute inset-2 bg-white/40 rounded-full"></div>
+        {/* Crosshairs */}
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+            <div 
+                className="absolute w-px h-full bg-orange-500/20" 
+                style={{ left: `${leftPercent}%` }}
+            ></div>
+            <div 
+                className="absolute h-px w-full bg-orange-500/20" 
+                style={{ top: `${topPercent}%` }}
+            ></div>
         </div>
 
-        {/* Info Overlay */}
-        <div className="absolute bottom-1 right-2 text-[10px] font-mono text-cyan-400 opacity-50 z-20">
-          X:{position.x.toFixed(1)} Y:{position.y.toFixed(1)}
+        {/* The Puck - Minimal Square Cursor */}
+        <div 
+          className="absolute w-3 h-3 border-2 border-orange-500 bg-transparent transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 ease-out z-10"
+          style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
+        >
+        </div>
+
+        {/* Coordinates */}
+        <div className="absolute bottom-1 right-1 text-[9px] font-mono text-zinc-500 tabular-nums">
+          {position.x.toFixed(1)}, {position.y.toFixed(1)}
         </div>
       </div>
       
-      <div className="text-center">
-        <div className="inline-block bg-slate-800 rounded-full px-4 py-2 border border-slate-700">
-             <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
-                <span>MODULATION</span>
-                <div className="flex gap-1">
-                   <kbd className="bg-slate-700 px-1.5 rounded border-b border-slate-900">W</kbd>
-                   <kbd className="bg-slate-700 px-1.5 rounded border-b border-slate-900">A</kbd>
-                   <kbd className="bg-slate-700 px-1.5 rounded border-b border-slate-900">S</kbd>
-                   <kbd className="bg-slate-700 px-1.5 rounded border-b border-slate-900">D</kbd>
-                </div>
-             </div>
-        </div>
+      {/* Legend */}
+      <div className="flex gap-2 mt-3 text-[9px] text-zinc-500 font-mono">
+         <span className="bg-zinc-800 px-1 rounded border border-zinc-700">W</span>
+         <span className="bg-zinc-800 px-1 rounded border border-zinc-700">A</span>
+         <span className="bg-zinc-800 px-1 rounded border border-zinc-700">S</span>
+         <span className="bg-zinc-800 px-1 rounded border border-zinc-700">D</span>
       </div>
     </div>
   );

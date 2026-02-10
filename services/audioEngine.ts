@@ -4,6 +4,7 @@ interface Voice {
   oscillators: OscillatorNode[];
   gainNodes: GainNode[]; // Individual gains for harmonics/intervals
   masterGain: GainNode;
+  subGain: GainNode; // Control sub volume
   baseFreq: number;
   baseQuality: ChordQuality;
 }
@@ -19,6 +20,9 @@ class AudioEngine {
   // Current Modulation State
   private currentX: number = 0;
   private currentY: number = 0;
+  
+  // Global Settings
+  private subEnabled: boolean = false;
 
   // Constants
   // We allocate 4 oscillators per voice to handle up to 9th chords
@@ -52,6 +56,16 @@ class AudioEngine {
   public resume() {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
+    }
+  }
+
+  public setSubEnabled(enabled: boolean) {
+    this.subEnabled = enabled;
+    if (this.ctx) {
+      const now = this.ctx.currentTime;
+      this.activeVoices.forEach(voice => {
+        voice.subGain.gain.setTargetAtTime(enabled ? 0.35 : 0, now, 0.1);
+      });
     }
   }
 
@@ -200,7 +214,7 @@ class AudioEngine {
     const oscillators: OscillatorNode[] = [];
     const gainNodes: GainNode[] = [];
 
-    // Create pool of oscillators
+    // Create pool of chord oscillators
     for (let i = 0; i < this.OSC_COUNT; i++) {
       const osc = this.ctx!.createOscillator();
       const g = this.ctx!.createGain();
@@ -219,10 +233,27 @@ class AudioEngine {
       gainNodes.push(g);
     }
 
+    // Create Sub Oscillator
+    const subOsc = this.ctx!.createOscillator();
+    const subGain = this.ctx!.createGain();
+    subOsc.type = 'sawtooth';
+    subOsc.frequency.value = baseFreq / 4; // 2 Octaves down
+    
+    subGain.gain.setValueAtTime(this.subEnabled ? 0.35 : 0, now);
+    
+    subOsc.connect(subGain);
+    subGain.connect(masterGain);
+    subOsc.start(now);
+    
+    // Add subOsc to oscillators array so it gets cleaned up by triggerRelease
+    // But we don't add subGain to gainNodes because it's controlled separately
+    oscillators.push(subOsc);
+
     const voice: Voice = {
       oscillators,
       gainNodes,
       masterGain,
+      subGain,
       baseFreq,
       baseQuality: quality
     };
